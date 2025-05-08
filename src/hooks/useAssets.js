@@ -21,6 +21,7 @@ const manifest = {
 				{ alias: 'fish5', src: '/assets/fish5.png' },
 				{ alias: 'displacement-map', src: '/assets/displacement_map.png' },
 				{ alias: 'riverbottom', src: '/assets/riverbottom_result.webp' },
+				{ alias: 'background', src: '/assets/pond_background.jpg' }
 			],
 		},
 	],
@@ -34,18 +35,6 @@ export function useAssets() {
 		// Function to initialize and load assets
 		const loadAssets = async () => {
 			try {
-        console.log("--- Debugging manifest in useAssets ---"); // Add this line
-        console.log("Manifest variable:", manifest); // Add this line
-        console.log("Type of manifest:", typeof manifest); // Add this line
-        console.log("Is manifest null?", manifest === null); // Add this line
-        console.log("Is manifest undefined?", manifest === undefined); // Add this line
-        if (manifest && manifest.bundles) {
-           console.log("Type of manifest.bundles:", typeof manifest.bundles); // Add this line
-           console.log("Is manifest.bundles an array?", Array.isArray(manifest.bundles)); // Add this line
-        }
-        console.log("--- End debugging manifest ---"); // Add this line
-
-
 				// Initialize the Assets class (PixiJS v8+)
 				// This prepares it to load assets, setting base path etc.
 				await Assets.init({ manifest }); // Pass our manifest here

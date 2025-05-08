@@ -2,7 +2,7 @@
 import React from 'react';
 import { Application, useExtend } from '@pixi/react';
 import { Container, Sprite, Graphics, TilingSprite } from 'pixi.js';
-// import { FishPond } from './components/FishPond';
+import { FishPond } from './components/FishPond';
 import { useAssets } from './hooks/useAssets'; // We'll create this hook next
 
 function App() {
@@ -33,22 +33,7 @@ function App() {
         backgroundColor={0x1099bb}
         resizeTo={window}
       >
-        {/*
-          Child components placed here will be added to the PixiJS stage
-          We'll add our visual components here later, e.g.:
-          <FishPond />
-        */}
-         {/* Placeholder for now - we'll add visual components here later */}
-         {/* <pixiGraphics
-           x={window.innerWidth / 2}
-           y={window.innerHeight / 2}
-           draw={g => {
-             g.beginFill(0xffffff);
-             g.drawCircle(0, 0, 50);
-             g.endFill();
-           }}
-         /> */}
-
+        <FishPond />
       </Application>
     </div>
   );
