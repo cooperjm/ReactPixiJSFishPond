@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Texture } from 'pixi.js'; // Import Texture to get assets
 import { WaterOverlay } from './WaterOverlay'; // Import the wavy overlay component
+import { FishContainer } from './FishContainer';
 
 export function FishPond() {
    const containerRef = useRef(null);
@@ -41,6 +42,7 @@ export function FishPond() {
             x={0}
             y={0}
          />
+         <FishContainer />
          <WaterOverlay speedX={40} speedY={20}/>
       </pixiContainer>
    );
