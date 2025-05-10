@@ -1,64 +1,84 @@
 // src/components/Fish.jsx
 import React, { useRef, useState, useEffect } from 'react';
-import { Sprite, Texture } from 'pixi.js'; // Import Sprite and Texture
+import { Sprite, Assets, Texture } from 'pixi.js';
 
 // Helper function to get a random fish texture alias
 const getRandomFishTextureAlias = () => {
     const fishAliases = ['fish1', 'fish2', 'fish3', 'fish4', 'fish5'];
     const randomIndex = Math.floor(Math.random() * fishAliases.length);
-
     return fishAliases[randomIndex];
 };
 
+// Preload all fish textures
+const fishTextures = {};
+const preloadTextures = async () => {
+    const fishAliases = ['fish1', 'fish2', 'fish3', 'fish4', 'fish5'];
+    
+    // Create an array of promises for loading each texture
+    const texturePromises = fishAliases.map(async (alias) => {
+        // Use the Assets API for more reliable loading
+        const texture = await Assets.load(`/assets/${alias}.png`);
+        fishTextures[alias] = texture;
+        console.log(`Preloaded texture for ${alias}`);
+        return texture;
+    });
+    
+    // Wait for all textures to load
+    await Promise.all(texturePromises);
+    console.log("All fish textures preloaded successfully");
+};
+
+// Call preload outside component to start loading immediately
+preloadTextures().catch(err => console.error("Error preloading textures:", err));
+
 export function Fish() {
-  // Ref to hold the PixiJS Sprite instance for this fish
   const fishRef = useRef(null);
-
-  // State to hold the randomly selected texture alias
   const [textureAlias] = useState(getRandomFishTextureAlias());
-
-  // Get the texture for the selected alias
-  const fishTexture = Texture.from(textureAlias);
-
-  // Set initial random position and rotation (we'll add movement later)
-  // Use useState so these values are stable for this instance
   const [initialPos] = useState({
     x: Math.random() * window.innerWidth,
     y: Math.random() * window.innerHeight,
   });
+  const [initialRotation] = useState(Math.random() * Math.PI * 2);
+  const [isTextureReady, setIsTextureReady] = useState(false);
 
-  const [initialRotation] = useState(Math.random() * Math.PI * 2); // Random rotation in radians
+  useEffect(() => {
+    // Check if the texture is already preloaded
+    if (fishTextures[textureAlias]) {
+      console.log(`Texture ${textureAlias} already preloaded, setting ready state`);
+      setIsTextureReady(true);
+      return;
+    }
 
-  // We can add effects here later for animation (GSAP or Ticker)
+    // If not preloaded yet, load it specifically
+    console.log(`Texture ${textureAlias} not preloaded yet, loading now`);
+    Assets.load(`/assets/${textureAlias}.png`)
+      .then(texture => {
+        fishTextures[textureAlias] = texture;
+        console.log(`Loaded texture for ${textureAlias}`);
+        setIsTextureReady(true);
+      })
+      .catch(error => {
+        console.error(`Failed to load texture for ${textureAlias}:`, error);
+      });
+      
+    // No cleanup needed as we're using the Assets API
+  }, [textureAlias]);
 
-  // Ensure texture is loaded before rendering
-   // if (!fishTexture || !fishTexture.baseTexture.valid) {
-   //     console.warn(`Fish texture not found or invalid for alias: ${textureAlias}`);
-   //     return null;
-   // }
-
-   console.log(fishTexture)
-
+  // Only render if the texture is ready
+  if (!isTextureReady || !fishTextures[textureAlias]) {
+    return null;
+  }
 
   return (
-    // Render a PixiJS Sprite for the fish
-    // We are making it interactive so we can add click/tap events later
     <pixiSprite
-      ref={fishRef} // Attach the ref
-      texture={fishTexture} // Assign the random fish texture
-      x={initialPos.x} // Set initial random position
+      ref={fishRef}
+      texture={fishTextures[textureAlias]}
+      x={initialPos.x}
       y={initialPos.y}
-      rotation={initialRotation} // Set initial random rotation
-      anchor={0.5} // Set anchor to the center of the sprite (makes position and rotation centered)
-      // Initial scale can be set here too if needed
-      // scale={0.8}
-      interactive={true} // Enable interaction events
-      cursor="pointer" // Show pointer cursor on hover
-      // You can add event handlers here, e.g.:
-      // click={(event) => console.log('Fish clicked!', textureAlias, event)}
-      // tap={(event) => console.log('Fish tapped!', textureAlias, event)}
+      rotation={initialRotation}
+      anchor={0.5}
+      interactive={true}
+      cursor="pointer"
     />
   );
 }
-
-
