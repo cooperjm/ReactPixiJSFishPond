@@ -1,63 +1,76 @@
-// src/hooks/useAssets.js
-import { useEffect, useState } from 'react';
+// src/hooks/useAssets.js - Updated version
+import { useEffect, useState, useCallback } from 'react';
 import { Assets } from 'pixi.js';
 
-// Define the assets we want to load
-// Keys are the names we'll use to reference them (e.g., Texture.from('overlay'))
-// Values are the paths to the asset files
+// Define the assets manifest
 const manifest = {
-	bundles: [
-		{
-			name: 'fish-pond-assets', // A name for this bundle of assets
-			assets: [
-				{
-					alias: 'overlay', // The name we use to reference this asset
-					src: '/assets/wave_overlay.png', // The path to the asset file
-				},
-				{ alias: 'fish1', src: '/assets/fish1.png' },
-				{ alias: 'fish2', src: '/assets/fish2.png' },
-				{ alias: 'fish3', src: '/assets/fish3.png' },
-				{ alias: 'fish4', src: '/assets/fish4.png' },
-				{ alias: 'fish5', src: '/assets/fish5.png' },
-				{ alias: 'displacement-map', src: '/assets/displacement_map.png' },
-				{ alias: 'riverbottom', src: '/assets/riverbottom_result.webp' },
-				{ alias: 'background', src: '/assets/pond_background.jpg' }
-			],
-		},
-	],
+  bundles: [
+    {
+      name: 'fish-pond-assets',
+      assets: [
+        { alias: 'overlay', src: '/assets/wave_overlay.png' },
+        { alias: 'fish1', src: '/assets/fish1.png' },
+        { alias: 'fish2', src: '/assets/fish2.png' },
+        { alias: 'fish3', src: '/assets/fish3.png' },
+        { alias: 'fish4', src: '/assets/fish4.png' },
+        { alias: 'fish5', src: '/assets/fish5.png' },
+        { alias: 'displacement-map', src: '/assets/displacement_map.png' },
+        { alias: 'riverbottom', src: '/assets/riverbottom_result.webp' },
+        { alias: 'background', src: '/assets/pond_background.jpg' }
+      ],
+    },
+  ],
 };
 
+// Keep track of initialization across renders/components
+let isAssetsInitialized = false;
 
 export function useAssets() {
-	const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-	useEffect(() => {
-		// Function to initialize and load assets
-		const loadAssets = async () => {
-			try {
-				// Initialize the Assets class (PixiJS v8+)
-				// This prepares it to load assets, setting base path etc.
-				await Assets.init({ manifest }); // Pass our manifest here
+  // Function to load assets - using useCallback to make it reusable
+  const loadAssets = useCallback(async () => {
+    try {
+      console.log('Loading fish pond assets...');
+      
+      // Only initialize once
+      if (!isAssetsInitialized) {
+        console.log('Initializing Assets system');
+        await Assets.init({ manifest });
+        isAssetsInitialized = true;
+      }
 
-				// Load the assets from the specified bundle(s)
-				// If no bundles specified, it loads all assets in the manifest
-				await Assets.loadBundle('fish-pond-assets');
+      // Load the assets from the bundle
+      await Assets.loadBundle('fish-pond-assets');
+      console.log('All assets loaded successfully');
+      setAssetsLoaded(true);
+      setLoadError(null);
+    } catch (error) {
+      console.error('Error loading assets:', error);
+      setLoadError(error.message);
+      setAssetsLoaded(false);
+    }
+  }, []);
 
-				// Once loading is complete, update the state
-				setAssetsLoaded(true);
-			} catch (error) {
-				console.error('Error loading assets:', error);
-				// Handle error loading assets (e.g., show an error message)
-			}
-		};
+  // Function to handle WebGL context restoration
+  const handleContextRestoration = useCallback(async () => {
+    console.log('WebGL context restored, reloading assets...');
+    setAssetsLoaded(false);
+    isAssetsInitialized = false; // Reset initialization flag
+    await loadAssets();
+  }, [loadAssets]);
 
-		// Start loading assets when the component mounts
-		loadAssets();
+  // Load assets on mount
+  useEffect(() => {
+    loadAssets();
+  }, [loadAssets]);
 
-		// No cleanup needed for this simple loading example,
-		// but you might add cleanup logic if you had ongoing processes.
-	}, []); // The empty dependency array ensures this effect runs only once on mount
-
-	// Return the loading state
-	return assetsLoaded;
+  // Return both the loading state and functions for context handling
+  return {
+    assetsLoaded,
+    loadError,
+    reloadAssets: loadAssets,
+    handleContextRestoration
+  };
 }

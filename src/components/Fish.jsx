@@ -1,81 +1,137 @@
-// src/components/Fish.jsx
+// src/components/Fish.jsx - Corrected with proper turning and delta time
 import React, { useRef, useState, useEffect } from 'react';
-import { Sprite, Assets, Texture } from 'pixi.js';
+import { Assets } from 'pixi.js';
+import { gsap } from 'gsap';
 
-// Helper function to get a random fish texture alias
+// Helper functions
 const getRandomFishTextureAlias = () => {
-    const fishAliases = ['fish1', 'fish2', 'fish3', 'fish4', 'fish5'];
-    const randomIndex = Math.floor(Math.random() * fishAliases.length);
-    return fishAliases[randomIndex];
+  const fishAliases = ['fish1', 'fish2', 'fish3', 'fish4', 'fish5'];
+  const randomIndex = Math.floor(Math.random() * fishAliases.length);
+  return fishAliases[randomIndex];
 };
 
-// Preload all fish textures
-const fishTextures = {};
-const preloadTextures = async () => {
-    const fishAliases = ['fish1', 'fish2', 'fish3', 'fish4', 'fish5'];
-    
-    // Create an array of promises for loading each texture
-    const texturePromises = fishAliases.map(async (alias) => {
-        // Use the Assets API for more reliable loading
-        const texture = await Assets.load(`/assets/${alias}.png`);
-        fishTextures[alias] = texture;
-        console.log(`Preloaded texture for ${alias}`);
-        return texture;
-    });
-    
-    // Wait for all textures to load
-    await Promise.all(texturePromises);
-    console.log("All fish textures preloaded successfully");
+const getRandomBetween = (min, max) => {
+  return Math.random() * (max - min) + min;
 };
-
-// Call preload outside component to start loading immediately
-preloadTextures().catch(err => console.error("Error preloading textures:", err));
 
 export function Fish() {
   const fishRef = useRef(null);
   const [textureAlias] = useState(getRandomFishTextureAlias());
-  const [initialPos] = useState({
+  
+  // Initial fish state with more balanced parameters
+  const [fishState] = useState(() => ({
     x: Math.random() * window.innerWidth,
     y: Math.random() * window.innerHeight,
-  });
-  const [initialRotation] = useState(Math.random() * Math.PI * 2);
-  const [isTextureReady, setIsTextureReady] = useState(false);
+    direction: Math.random() * Math.PI * 2,
+    // Much smaller turn speed to prevent tight circles
+    turnSpeed: getRandomBetween(-0.5, 0.5),
+    // Slightly faster speed
+    speed: getRandomBetween(1.5, 3.5),
+    scale: getRandomBetween(0.7, 1.3)
+  }));
 
+  // Animation using GSAP ticker
   useEffect(() => {
-    // Check if the texture is already preloaded
-    if (fishTextures[textureAlias]) {
-      console.log(`Texture ${textureAlias} already preloaded, setting ready state`);
-      setIsTextureReady(true);
-      return;
-    }
-
-    // If not preloaded yet, load it specifically
-    console.log(`Texture ${textureAlias} not preloaded yet, loading now`);
-    Assets.load(`/assets/${textureAlias}.png`)
-      .then(texture => {
-        fishTextures[textureAlias] = texture;
-        console.log(`Loaded texture for ${textureAlias}`);
-        setIsTextureReady(true);
-      })
-      .catch(error => {
-        console.error(`Failed to load texture for ${textureAlias}:`, error);
-      });
+    if (!fishRef.current) return;
+    
+    const fish = fishRef.current;
+    
+    // Set initial position
+    gsap.set(fish, {
+      x: fishState.x,
+      y: fishState.y,
+      rotation: -fishState.direction - Math.PI / 2,
+      scale: fishState.scale
+    });
+    
+    // Current state tracking
+    let currentX = fishState.x;
+    let currentY = fishState.y;
+    let currentDirection = fishState.direction;
+    let currentTurnSpeed = fishState.turnSpeed;
+    
+    // Define stage boundaries with padding
+    const stagePadding = 100;
+    
+    // Periodically change turn speed to make movement more natural
+    // But with much smaller changes to prevent tight circles
+    const changeTurnDirection = () => {
+      // Get a new turn speed, but keep it small
+      currentTurnSpeed = getRandomBetween(-0.5, 0.5);
       
-    // No cleanup needed as we're using the Assets API
-  }, [textureAlias]);
+      // Schedule next change after a longer time
+      gsap.delayedCall(getRandomBetween(3, 8), changeTurnDirection);
+    };
+    
+    // Start the turn direction change cycle
+    changeTurnDirection();
+    
+    // Create a ticker for continuous animation
+    const ticker = gsap.ticker.add((time, deltaTime) => {
+      // Convert deltaTime to seconds
+      const delta = deltaTime / 1000;
+      
+      // Update direction using current turn speed and delta time
+      // Use a small multiplier to make turns gentle
+      currentDirection += currentTurnSpeed * 0.01 * delta * 60;
+      
+      // Update position based on direction, speed and delta time
+      currentX += Math.sin(currentDirection) * fishState.speed * delta * 60;
+      currentY += Math.cos(currentDirection) * fishState.speed * delta * 60;
+      
+      // Apply rotation
+      const rotation = -currentDirection - Math.PI / 2;
+      
+      // Handle screen wrapping
+      const boundWidth = window.innerWidth + stagePadding * 2;
+      const boundHeight = window.innerHeight + stagePadding * 2;
+      
+      // Wrap position when going off-screen
+      if (currentX < -stagePadding) {
+        currentX += boundWidth;
+      }
+      if (currentX > window.innerWidth + stagePadding) {
+        currentX -= boundWidth;
+      }
+      if (currentY < -stagePadding) {
+        currentY += boundHeight;
+      }
+      if (currentY > window.innerHeight + stagePadding) {
+        currentY -= boundHeight;
+      }
+      
+      // Apply the updates to the fish sprite
+      fish.x = currentX;
+      fish.y = currentY;
+      fish.rotation = rotation;
+    });
+    
+    // Handle window resize
+    const handleResize = () => {
+      // No need to reset fish position - the wrapping logic will handle it
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      gsap.ticker.remove(ticker);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [fishState]);
 
-  // Only render if the texture is ready
-  if (!isTextureReady || !fishTextures[textureAlias]) {
+  // Get fish texture
+  const fishTexture = Assets.get(textureAlias);
+
+  if (!fishTexture) {
+    console.warn(`Failed to get texture for ${textureAlias}`);
     return null;
   }
 
   return (
     <pixiSprite
       ref={fishRef}
-      texture={fishTextures[textureAlias]}
-      x={initialPos.x}
-      y={initialPos.y}
-      rotation={initialRotation}
+      texture={fishTexture}
       anchor={0.5}
       interactive={true}
       cursor="pointer"
